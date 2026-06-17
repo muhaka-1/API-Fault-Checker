@@ -1,0 +1,19 @@
+version: '3.9'
+
+services:
+  fault-checker:
+    build: .
+    container_name: api-fault-checker
+    restart: always
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    volumes:
+      - ./logs:/app/logs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s

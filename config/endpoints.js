@@ -1,0 +1,127 @@
+// config/endpoints.js — Define all APIs to monitor
+
+module.exports = [
+  // ── Meta ────────────────────────────────────────────────────────────
+  {
+    id:       'meta-graph',
+    provider: 'Meta',
+    name:     'Graph API',
+    url:      'https://graph.facebook.com/v19.0/',
+    method:   'HEAD',
+    headers:  {},
+    expectedStatus: [200, 400], // 400 = no token, but server is up
+    tags:     ['meta', 'core'],
+  },
+  {
+    id:       'meta-instagram',
+    provider: 'Meta',
+    name:     'Instagram API',
+    url:      'https://graph.instagram.com/',
+    method:   'HEAD',
+    expectedStatus: [200, 400],
+    tags:     ['meta', 'social'],
+  },
+  {
+    id:       'meta-whatsapp',
+    provider: 'Meta',
+    name:     'WhatsApp Business',
+    url:      'https://graph.facebook.com/v19.0/me/messages',
+    method:   'HEAD',
+    expectedStatus: [200, 400, 401],
+    tags:     ['meta', 'messaging'],
+  },
+
+  // ── Amazon AWS ──────────────────────────────────────────────────────
+  {
+    id:       'aws-s3',
+    provider: 'Amazon',
+    name:     'S3',
+    url:      'https://s3.amazonaws.com/',
+    method:   'HEAD',
+    expectedStatus: [200, 403], // 403 = no auth but reachable
+    tags:     ['aws', 'storage'],
+  },
+  {
+    id:       'aws-dynamodb',
+    provider: 'Amazon',
+    name:     'DynamoDB',
+    url:      'https://dynamodb.us-east-1.amazonaws.com/',
+    method:   'HEAD',
+    expectedStatus: [200, 400, 403],
+    tags:     ['aws', 'database'],
+  },
+  {
+    id:       'aws-lambda',
+    provider: 'Amazon',
+    name:     'Lambda',
+    url:      'https://lambda.us-east-1.amazonaws.com/',
+    method:   'HEAD',
+    expectedStatus: [200, 400, 403],
+    tags:     ['aws', 'compute'],
+  },
+  {
+    id:       'aws-api-gateway',
+    provider: 'Amazon',
+    name:     'API Gateway',
+    url:      'https://apigateway.us-east-1.amazonaws.com/',
+    method:   'HEAD',
+    expectedStatus: [200, 400, 403],
+    tags:     ['aws', 'api'],
+  },
+  {
+    id:       'aws-cloudfront',
+    provider: 'Amazon',
+    name:     'CloudFront',
+    url:      'https://cloudfront.amazonaws.com/',
+    method:   'HEAD',
+    expectedStatus: [200, 400, 403],
+    tags:     ['aws', 'cdn'],
+  },
+
+  // ── Google Cloud ────────────────────────────────────────────────────
+  {
+    id:       'gcp-cloud-run',
+    provider: 'Google',
+    name:     'Cloud Run',
+    url:      'https://run.googleapis.com/',
+    method:   'HEAD',
+    expectedStatus: [200, 401],
+    tags:     ['gcp', 'compute'],
+  },
+  {
+    id:       'gcp-pubsub',
+    provider: 'Google',
+    name:     'Pub/Sub',
+    url:      'https://pubsub.googleapis.com/',
+    method:   'HEAD',
+    expectedStatus: [200, 401],
+    tags:     ['gcp', 'messaging'],
+  },
+  {
+    id:       'gcp-bigquery',
+    provider: 'Google',
+    name:     'BigQuery',
+    url:      'https://bigquery.googleapis.com/',
+    method:   'HEAD',
+    expectedStatus: [200, 401],
+    tags:     ['gcp', 'analytics'],
+  },
+  {
+    id:       'gcp-storage',
+    provider: 'Google',
+    name:     'Cloud Storage',
+    url:      'https://storage.googleapis.com/',
+    method:   'HEAD',
+    expectedStatus: [200, 400],
+    tags:     ['gcp', 'storage'],
+  },
+  {
+    id:       'gcp-vertex-ai',
+    provider: 'Google',
+    name:     'Vertex AI',
+    url:      'https://us-central1-aiplatform.googleapis.com/',
+    method:   'HEAD',
+    expectedStatus: [200, 401],
+    tags:     ['gcp', 'ai'],
+  },
+];

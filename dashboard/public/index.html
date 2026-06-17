@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>API Fault Checker — Live Dashboard</title>
+  <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #f8f9fa; --surface: #ffffff; --border: #e5e7eb;
+      --text: #111827; --muted: #6b7280; --hint: #9ca3af;
+      --green: #16a34a; --amber: #d97706; --red: #dc2626; --blue: #2563eb;
+      --green-bg: #f0fdf4; --amber-bg: #fffbeb; --red-bg: #fef2f2; --blue-bg: #eff6ff;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); font-size: 14px; }
+    header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; }
+    header h1 { font-size: 16px; font-weight: 600; }
+    .live { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(1.3)} }
+    .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+    .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; }
+    .card .label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px; }
+    .card .value { font-size: 24px; font-weight: 600; }
+    .card .sub { font-size: 11px; color: var(--hint); margin-top: 4px; }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+    .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; }
+    .panel-title { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 14px; }
+    .srow { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border); }
+    .srow:last-child { border-bottom: none; }
+    .sname { font-size: 13px; font-weight: 500; }
+    .smeta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .sdot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-right: 10px; }
+    .badge { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 20px; }
+    .ok { color: var(--green); background: var(--green-bg); }
+    .warn { color: var(--amber); background: var(--amber-bg); }
+    .err { color: var(--red); background: var(--red-bg); }
+    .info { color: var(--blue); background: var(--blue-bg); }
+    .full { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; margin-bottom: 20px; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th { text-align: left; color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; padding: 6px 10px; border-bottom: 1px solid var(--border); }
+    td { padding: 9px 10px; border-bottom: 1px solid var(--border); }
+    tr:last-child td { border-bottom: none; }
+    .mono { font-family: 'SF Mono', Consolas, monospace; font-size: 11px; color: var(--muted); }
+    #fault-list .fitem { padding: 10px 0; border-bottom: 1px solid var(--border); }
+    #fault-list .fitem:last-child { border-bottom: none; }
+    .ftitle { font-size: 13px; font-weight: 500; }
+    .fmeta { font-size: 11px; color: var(--muted); margin-top: 3px; }
+    .empty { font-size: 13px; color: var(--hint); padding: 16px 0; }
+    .latbar { height: 3px; border-radius: 2px; margin-top: 4px; max-width: 80px; }
+  </style>
+</head>
+<body>
+  <header>
+    <div style="display:flex;align-items:center;gap:12px">
+      <h1>API Fault Checker</h1>
+      <span style="font-size:12px;color:var(--muted)" id="poll-info">connecting…</span>
+    </div>
+    <div class="live"><span class="dot"></span> Live — updates automatically</div>
+  </header>
+
+  <div class="container">
+    <div class="metrics" id="metrics">
+      <div class="card"><div class="label">APIs online</div><div class="value">—</div><div class="sub">loading…</div></div>
+      <div class="card"><div class="label">Avg latency</div><div class="value">—</div><div class="sub">loading…</div></div>
+      <div class="card"><div class="label">Active faults</div><div class="value">—</div><div class="sub">loading…</div></div>
+      <div class="card"><div class="label">Poll count</div><div class="value">—</div><div class="sub">loading…</div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="panel">
+        <div class="panel-title">Service health</div>
+        <div id="svc-list"><div class="empty">Waiting for first poll…</div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">Active faults</div>
+        <div id="fault-list"><div class="empty">Waiting for first poll…</div></div>
+      </div>
+    </div>
+
+    <div class="full">
+      <div class="panel-title" style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:14px">Endpoint detail</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Provider</th><th>Service</th><th>Status</th><th>Latency</th><th>Result</th><th>Last checked</th>
+          </tr>
+        </thead>
+        <tbody id="endpoint-body"><tr><td colspan="6" style="color:var(--hint);text-align:center;padding:20px">Waiting for data…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    const socket = io();
+
+    socket.on('connect',    () => { document.getElementById('poll-info').textContent = 'Connected'; });
+    socket.on('disconnect', () => { document.getElementById('poll-info').textContent = 'Disconnected — reconnecting…'; });
+
+    socket.on('results', ({ results, pollCount, timestamp }) => {
+      document.getElementById('poll-info').textContent =
+        `Poll #${pollCount} · ${new Date(timestamp).toLocaleTimeString()}`;
+      renderAll(results, pollCount);
+    });
+
+    function sev(r) {
+      if (!r.ok || r.status === 0 || r.status >= 500) return 'P0';
+      if (r.latency > 1000) return 'P1';
+      if (r.latency > 300)  return 'P2';
+      return 'ok';
+    }
+
+    function renderAll(results, pollCount) {
+      const faults = results.filter(r => sev(r) !== 'ok');
+      const avgLat = Math.round(results.reduce((a, r) => a + r.latency, 0) / results.length);
+
+      // Metrics
+      document.getElementById('metrics').innerHTML = [
+        { label: 'APIs online',   value: `${results.filter(r=>r.ok).length}/${results.length}`, sub: `${faults.length} faults`,    cls: faults.length>0?'warn':'ok' },
+        { label: 'Avg latency',   value: `${avgLat}ms`,   sub: 'this poll',     cls: avgLat>300?'warn':'ok' },
+        { label: 'Active faults', value: faults.length,   sub: `P0:${faults.filter(r=>sev(r)==='P0').length} P1:${faults.filter(r=>sev(r)==='P1').length}`, cls: faults.length>0?'err':'ok' },
+        { label: 'Poll count',    value: pollCount,        sub: 'since startup', cls: 'info' },
+      ].map(m => `<div class="card">
+        <div class="label">${m.label}</div>
+        <div class="value"><span class="badge ${m.cls}">${m.value}</span></div>
+        <div class="sub">${m.sub}</div>
+      </div>`).join('');
+
+      // Service list
+      document.getElementById('svc-list').innerHTML = results.map(r => {
+        const s = sev(r);
+        const dotColor = s==='ok'?'#16a34a':s==='P2'?'#d97706':'#dc2626';
+        const badgeCls = s==='ok'?'ok':s==='P2'?'warn':'err';
+        const badgeText = s==='ok'?'OK':s==='P2'?'Slow':r.error||`HTTP ${r.status}`;
+        const barW = Math.min(100, Math.round(r.latency/15));
+        const barC = r.latency>1000?'#dc2626':r.latency>300?'#d97706':'#16a34a';
+        return `<div class="srow">
+          <div style="display:flex;align-items:center">
+            <span class="sdot" style="background:${dotColor}"></span>
+            <div>
+              <div class="sname">${r.provider} ${r.name}</div>
+              <div class="latbar" style="width:${barW}%;background:${barC}"></div>
+              <div class="smeta">${r.latency}ms</div>
+            </div>
+          </div>
+          <span class="badge ${badgeCls}">${badgeText}</span>
+        </div>`;
+      }).join('');
+
+      // Fault list
+      document.getElementById('fault-list').innerHTML = faults.length === 0
+        ? '<div class="empty">✓ All systems nominal</div>'
+        : faults.map(r => {
+            const s = sev(r);
+            return `<div class="fitem">
+              <div class="ftitle">${r.provider} ${r.name} — <span class="badge ${s==='P0'?'err':'warn'}">${s}</span></div>
+              <div class="fmeta">HTTP ${r.status||0} · ${r.latency}ms${r.error?' · '+r.error:''}</div>
+            </div>`;
+          }).join('');
+
+      // Endpoint table
+      document.getElementById('endpoint-body').innerHTML = results.map(r => {
+        const s = sev(r);
+        const latCls = r.latency>1000?'err':r.latency>300?'warn':'ok';
+        const statusCls = r.ok?'ok':'err';
+        const time = new Date(r.timestamp).toLocaleTimeString();
+        return `<tr>
+          <td>${r.provider}</td>
+          <td><strong>${r.name}</strong><br><span class="mono">${r.url}</span></td>
+          <td><span class="badge ${statusCls}">${r.status||r.error||'ERR'}</span></td>
+          <td><span class="badge ${latCls}">${r.latency}ms</span></td>
+          <td><span class="badge ${s==='ok'?'ok':s==='P2'?'warn':'err'}">${s==='ok'?'OK':s}</span></td>
+          <td class="mono">${time}</td>
+        </tr>`;
+      }).join('');
+    }
+  </script>
+</body>
+</html>

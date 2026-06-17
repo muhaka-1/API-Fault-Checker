@@ -1,0 +1,28 @@
+{
+  "name": "api-fault-checker",
+  "version": "1.0.0",
+  "description": "Real-time API fault checker for Meta, Amazon AWS, and Google Cloud with Slack & PagerDuty alerts",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "dashboard": "node dashboard/server.js",
+    "test": "node scripts/test-alerts.js",
+    "check-once": "node scripts/check-once.js"
+  },
+  "dependencies": {
+    "axios": "^1.6.0",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "node-cron": "^3.0.3",
+    "socket.io": "^4.6.1",
+    "winston": "^3.11.0",
+    "chalk": "^4.1.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

@@ -1,0 +1,25 @@
+[Unit]
+Description=API Fault Checker — monitors Meta, Amazon & Google APIs
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/opt/api-fault-checker
+ExecStart=/usr/bin/node src/index.js
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=api-fault-checker
+
+# Load secrets from env file
+EnvironmentFile=/opt/api-fault-checker/.env
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
